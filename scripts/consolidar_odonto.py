@@ -2,15 +2,17 @@ import sqlite3
 import pymysql
 import glob
 import os
+import sys
 from collections import defaultdict
 
-# Os valores reais devem residir apenas no seu arquivo .env 
+# Os valores reais devem residir apenas no seu arquivo .env
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'mysql'),
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
     'database': os.getenv('DB_NAME', 'indicadores_sus'),
-    'autocommit': False
+    'autocommit': False,
+    'connect_timeout': 10
 }
 
 # Validação Obrigatória: Impede a execução se as credenciais não forem injetadas
@@ -19,7 +21,7 @@ if not DB_CONFIG['password'] or not DB_CONFIG['user']:
     print("Certifique-se de que o arquivo .env está configurado ou as variáveis foram passadas ao container.\n")
     exit(1)
 
-# Caminhos de dados 
+# Caminhos de dados
 PASTA_PAMS = r"/data"
 PASTA_POP = r"/data"
 
@@ -27,10 +29,10 @@ CBO_CD = ('223208', '223293', '223272')
 CBO_TODOS = ('223208', '223293', '223272', '322405', '322425', '322415', '322430')
 
 PROC_CLINICOS_IND3 = (
-    '0101020058', '0101020066', '0101020074', '0101020082', '0101020090', 
-    '0307010015', '0307010031', '0307010066', '0307010074', '0307010082', 
-    '0307010104', '0307010112', '0307010120', '0307010139', '0307020010', 
-    '0307020029', '0307020070', '0307030024', '0307030040', '0307030059', 
+    '0101020058', '0101020066', '0101020074', '0101020082', '0101020090',
+    '0307010015', '0307010031', '0307010066', '0307010074', '0307010082',
+    '0307010104', '0307010112', '0307010120', '0307010139', '0307020010',
+    '0307020029', '0307020070', '0307030024', '0307030040', '0307030059',
     '0307030067', '0307030075', '0307030083', '0414020138', '0414020146'
 )
 PROC_PREVENTIVOS_IND5 = ('0101020058', '0101020066', '0101020074', '0101020082', '0101020090', '0101020104')
@@ -55,24 +57,29 @@ def extrair_dados_pams(cur_sqlite, tabela):
             consolidado[mun][col_idx] = val or 0
     return consolidado
 
-def processar_arquivos():
+
+def processar_arquivos(pattern=None):
     try:
         conn_mysql = pymysql.connect(**DB_CONFIG)
         cur_mysql = conn_mysql.cursor()
     except Exception as e:
         print(f"Erro ao conectar no MySQL: {e}")
         return
-    
+
     try:
         cur_mysql.execute("SELECT nome_arquivo FROM log_processamento_arquivos")
         processados = {row[0] for row in cur_mysql.fetchall()}
     except pymysql.err.ProgrammingError:
         print("Tabelas não encontradas no MySQL. Execute o script SQL de criação primeiro.")
         return
-    
+
     arquivos = glob.glob(os.path.join(PASTA_PAMS, "*.sqlite")) + \
                glob.glob(os.path.join(PASTA_POP, "*.sqlite"))
-    
+
+    # Filtra pelo pattern recebido do n8n, se informado
+    if pattern:
+        arquivos = [a for a in arquivos if pattern in os.path.basename(a)]
+
     for caminho in arquivos:
         nome = os.path.basename(caminho)
         if nome in processados:
@@ -82,7 +89,7 @@ def processar_arquivos():
         try:
             conn_sqlite = sqlite3.connect(caminho)
             cur_sqlite = conn_sqlite.cursor()
-            
+
             tabela = cur_sqlite.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             ).fetchone()[0]
@@ -96,10 +103,10 @@ def processar_arquivos():
                     for mun, v in dados.items()
                 ]
                 sql_pams = """
-                    INSERT INTO producao_odonto_consolidada 
-                    (data, municipio, ind01_num_prim_consulta, ind02_num_trat_concluido, 
-                     ind02_den_prim_consulta, ind03_num_exodontias, ind03_den_total_clinicos, 
-                     ind04_num_escovacao_6_12, ind05_num_preventivos, ind05_den_total_individuais, 
+                    INSERT INTO producao_odonto_consolidada
+                    (data, municipio, ind01_num_prim_consulta, ind02_num_trat_concluido,
+                     ind02_den_prim_consulta, ind03_num_exodontias, ind03_den_total_clinicos,
+                     ind04_num_escovacao_6_12, ind05_num_preventivos, ind05_den_total_individuais,
                      ind06_num_tra_art, ind06_den_restauradores)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
@@ -114,14 +121,14 @@ def processar_arquivos():
                 pops612 = dict(cur_sqlite.fetchall())
 
                 lista_pop = [
-                    (ano, mun, pops.get(mun, 0), pops612.get(mun, 0)) 
+                    (ano, mun, pops.get(mun, 0), pops612.get(mun, 0))
                     for mun in set(pops.keys()) | set(pops612.keys())
                 ]
                 sql_pop = """
-                    INSERT INTO populacao_municipios (ano, municipio, populacao_total, populacao_6_12) 
-                    VALUES (%s, %s, %s, %s) 
-                    ON DUPLICATE KEY UPDATE 
-                        populacao_total=VALUES(populacao_total), 
+                    INSERT INTO populacao_municipios (ano, municipio, populacao_total, populacao_6_12)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        populacao_total=VALUES(populacao_total),
                         populacao_6_12=VALUES(populacao_6_12)
                 """
                 cur_mysql.executemany(sql_pop, lista_pop)
@@ -139,5 +146,7 @@ def processar_arquivos():
     conn_mysql.close()
     print("\nProcessamento concluído.")
 
+
 if __name__ == "__main__":
-    processar_arquivos()
+    pattern = sys.argv[1] if len(sys.argv) > 1 else None
+    processar_arquivos(pattern)

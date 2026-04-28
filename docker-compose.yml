@@ -39,6 +39,13 @@ services:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
       - GENERIC_TIMEZONE=America/Campo_Grande
+      - DATASUS_DATA_PATH=/data
+      - DATASUS_SCRIPTS_PATH=/scripts
+      - DATASUS_ENV_FILE=/.env
+      - DATASUS_NETWORK=datasus_net
+      - IMAGE_PYTHON_CONSOLIDADOR=python-consolidador-local
+      - DATASUS_IMAGE_EXTRATOR=datasus-scripts-local
+      - N8N_CUSTOM_VARIABLES=DATASUS_DATA_PATH,DATASUS_SCRIPTS_PATH,DATASUS_ENV_FILE,DATASUS_NETWORK,IMAGE_PYTHON_CONSOLIDADOR,DATASUS_IMAGE_EXTRATOR
     volumes:
       - n8n_data:/home/node/.n8n
       - /var/run/docker.sock:/var/run/docker.sock
@@ -52,7 +59,7 @@ services:
       - datasus_net
 
   python-consolidador:
-    image: ghcr.io/delarissag/python-consolidador:latest
+    image: ghcr.io/saude-bucal-ms/python-consolidador:latest
     env_file:
       - .env
     volumes:

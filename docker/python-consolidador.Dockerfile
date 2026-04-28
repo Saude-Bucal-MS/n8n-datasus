@@ -15,4 +15,6 @@ RUN pip install --no-cache-dir pymysql cryptography
 
 # O container apenas aguarda o comando do n8n para executar
 # Mapearemos o script via volumes no docker-compose para facilitar atualizações
-CMD ["python", "/scripts/consolidar_odonto.py"]
+COPY scripts/consolidar_odonto.py /app/consolidar_odonto.py
+
+CMD ["python", "/app/consolidar_odonto.py"]
