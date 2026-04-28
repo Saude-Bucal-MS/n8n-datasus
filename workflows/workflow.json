@@ -3,28 +3,15 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "console.log('[Delta Load] Nenhum arquivo novo encontrado. Pipeline encerrado sem ação.');\nreturn [{ json: { status: 'nada_a_fazer', mensagem: 'Todos os arquivos já foram processados.' } }];"
+        "jsCode": "const arquivosExistentes = $input.all()\n  .map(item => item.json.nome_arquivo)\n  .filter(a => a && a.startsWith('PAMS'))\n  .map(a => a.replace('.sqlite', ''));\n\nconst INICIO = { ano: 2024, mes: 1 };\n\nconst hoje = new Date();\nconst limite = new Date(hoje.getFullYear(), hoje.getMonth(), 1);\n\nconst mesesEsperados = [];\nlet cursor = new Date(INICIO.ano, INICIO.mes - 1, 1);\n\nwhile (cursor <= limite) {\n  const yy = String(cursor.getFullYear()).slice(-2);\n  const mm = String(cursor.getMonth() + 1).padStart(2, '0');\n  mesesEsperados.push('PAMS' + yy + mm);\n  cursor.setMonth(cursor.getMonth() + 1);\n}\n\nconst faltando = mesesEsperados.filter(p => !arquivosExistentes.includes(p));\n\n// Array vazio encerra o pipeline automaticamente no n8n\nreturn faltando.map(pattern => ({ json: { pattern } }));"
       },
-      "id": "4b37e5e6-0e75-4005-a3eb-129d085ecbcf",
-      "name": "Log: Nada a Fazer1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -6192,
-        2144
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const arquivosExistentes = $input.all()\n  .map(item => item.json.nome_arquivo)\n  .filter(a => a && a.startsWith('PAMS'))\n  .map(a => a.replace('.sqlite', ''));\n\nconst INICIO = { ano: 2024, mes: 1 };\n\nconst hoje = new Date();\nconst limite = new Date(hoje.getFullYear(), hoje.getMonth(), 1);\n\n// Gera todos os patterns esperados\nconst mesesEsperados = [];\nlet cursor = new Date(INICIO.ano, INICIO.mes - 1, 1);\n\nwhile (cursor <= limite) {\n  const yy = String(cursor.getFullYear()).slice(-2);\n  const mm = String(cursor.getMonth() + 1).padStart(2, '0');\n  mesesEsperados.push('PAMS' + yy + mm);\n  cursor.setMonth(cursor.getMonth() + 1);\n}\n\nconst faltando = mesesEsperados.filter(p => !arquivosExistentes.includes(p));\n\nif (faltando.length === 0) {\n  return [{ json: { status: 'nada_a_fazer', pattern: null } }];\n}\n\nreturn faltando.map(pattern => ({ json: { status: 'pendente', pattern } }));"
-      },
-      "id": "aaf2d3ef-97d4-42a2-8c18-d0658f8a989a",
+      "id": "1ca0dcb9-4168-4e87-9279-b969357b807e",
       "name": "Verificar meses pendentes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -6672,
-        1984
+        480,
+        0
       ]
     },
     {
@@ -38,13 +25,13 @@
           ]
         }
       },
-      "id": "64da390d-b4ca-461e-8307-1df52ed8dc0a",
+      "id": "b97551ba-8993-4a6f-99f2-6b91808ec2fe",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        -7152,
-        1984
+        0,
+        0
       ]
     },
     {
@@ -53,78 +40,45 @@
         "query": "SELECT nome_arquivo FROM log_processamento_arquivos WHERE nome_arquivo LIKE 'PAMS%'",
         "options": {}
       },
-      "id": "434e4a06-9885-493d-8ee7-42d2b3dfff4a",
+      "id": "a890fc5b-ce13-4621-8c34-40b65a1b68d1",
       "name": "Buscar Processados no MySQL",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.2,
       "position": [
-        -6912,
-        1984
+        240,
+        0
       ],
       "credentials": {
         "mySql": {
-          "id": "gvjAdPfQHVVJxA5g",
+          "id": "dJkkmxXDmSDVzb8W",
           "name": "MySQL account"
         }
       }
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 1
-          },
-          "conditions": [
-            {
-              "id": "check-nada-a-fazer",
-              "leftValue": "={{ $json.status }}",
-              "rightValue": "nada_a_fazer",
-              "operator": {
-                "type": "string",
-                "operation": "notEquals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+        "command": "=docker run --rm -v /data:/data:z datasus-scripts-local --workdir /data single {{ $json.pattern }}"
       },
-      "id": "b9774bc1-82c5-434f-a532-9799762d88ea",
-      "name": "Há arquivos faltando?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        -6432,
-        1984
-      ]
-    },
-    {
-      "parameters": {
-        "command": "=docker run --rm -v /home/admin/n8n-datasus/dados_datasus:/data:z datasus-scripts-local --workdir /data single {{ $json.pattern }}"
-      },
-      "id": "aa8bcaf4-aeaa-4a00-b40e-3cf885dd24c3",
+      "id": "47e0dd92-edc4-45a1-b9da-fc516aef092a",
       "name": "Extrator DATASUS",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        -6192,
-        1888
+        960,
+        0
       ]
     },
     {
       "parameters": {
-        "command": "docker run --rm --network datasus_net --env-file /.env -v /home/admin/n8n-datasus/dados_datasus:/data:z -v /home/admin/n8n-datasus/scripts:/scripts:z python-consolidador-local"
+        "command": "=docker run --rm --network datasus_net --env-file /.env -v /data:/data:z ghcr.io/saude-bucal-ms/python-consolidador:latest {{ $json.pattern }}"
       },
-      "id": "63c3e0a0-a034-4776-bf7d-d7210e1ee543",
+      "id": "b5ac5b51-ee21-4e3e-b510-93c295c9a8d7",
       "name": "Consolidador Python",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        -5952,
-        1888
+        1200,
+        0
       ]
     },
     {
@@ -133,17 +87,17 @@
         "query": "SELECT \n    (SELECT COUNT(*) FROM producao_odonto_consolidada) as total_registros,\n    (SELECT MAX(data) FROM producao_odonto_consolidada) as ultima_data_processada;",
         "options": {}
       },
-      "id": "71c4a0a9-7600-4448-bb3a-674d212c419b",
+      "id": "5feace25-3063-49ff-8d30-cef57c737965",
       "name": "Verificação MySQL",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.2,
       "position": [
-        -5712,
-        1888
+        1440,
+        0
       ],
       "credentials": {
         "mySql": {
-          "id": "gvjAdPfQHVVJxA5g",
+          "id": "dJkkmxXDmSDVzb8W",
           "name": "MySQL account"
         }
       }
@@ -151,17 +105,6 @@
   ],
   "pinData": {},
   "connections": {
-    "Verificar meses pendentes": {
-      "main": [
-        [
-          {
-            "node": "Há arquivos faltando?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Schedule Trigger": {
       "main": [
         [
@@ -184,18 +127,11 @@
         ]
       ]
     },
-    "Há arquivos faltando?": {
+    "Verificar meses pendentes": {
       "main": [
         [
           {
             "node": "Extrator DATASUS",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Log: Nada a Fazer",
             "type": "main",
             "index": 0
           }
@@ -229,11 +165,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "310af4f9-ecda-4cb9-8aaa-45a41b067cb1",
+  "versionId": "1e40444c-eed5-42f3-842c-707fb5aa508c",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "d2a4bceb5a6de8409a6691bd18a9922758ed63bf55750e6509f31c032836c979"
+    "instanceId": "d638c6508b599768764168fa28083d4e49101b1d47455f544f208f5ad437d7b4"
   },
-  "id": "MjgnPk3mmYC3cgZS",
+  "id": "KQrxe5iIqNd1brAQ",
   "tags": []
 }
