@@ -120,7 +120,7 @@ def processar_arquivos(pattern=None):
                 ano = "20" + base[6:8]
                 cur_sqlite.execute(f"SELECT COD_MUN, SUM(POP) FROM {tabela} WHERE COD_MUN LIKE '50%' GROUP BY COD_MUN")
                 pops = {str(k)[:6]: v for k, v in cur_sqlite.fetchall()}
-                cur_sqlite.execute(f"SELECT COD_MUN, SUM(POP) FROM {tabela} WHERE IDADE BETWEEN 6 AND 12 AND COD_MUN LIKE '50%' GROUP BY COD_MUN")
+                cur_sqlite.execute(f"SELECT COD_MUN, SUM(POP) FROM {tabela} WHERE CAST(IDADE AS INTEGER) BETWEEN 6 AND 12 AND COD_MUN LIKE '50%' GROUP BY COD_MUN")
                 pops612 = {str(k)[:6]: v for k, v in cur_sqlite.fetchall()}
 
                 lista_pop = [
