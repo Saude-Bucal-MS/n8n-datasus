@@ -119,9 +119,9 @@ def processar_arquivos(pattern=None):
                 base = os.path.splitext(nome)[0]
                 ano = "20" + base[6:8]
                 cur_sqlite.execute(f"SELECT COD_MUN, SUM(POP) FROM {tabela} WHERE COD_MUN LIKE '50%' GROUP BY COD_MUN")
-                pops = {str(k): v for k, v in cur_sqlite.fetchall()}
+                pops = {str(k)[:6]: v for k, v in cur_sqlite.fetchall()}
                 cur_sqlite.execute(f"SELECT COD_MUN, SUM(POP) FROM {tabela} WHERE IDADE BETWEEN 6 AND 12 AND COD_MUN LIKE '50%' GROUP BY COD_MUN")
-                pops612 = {str(k): v for k, v in cur_sqlite.fetchall()}
+                pops612 = {str(k)[:6]: v for k, v in cur_sqlite.fetchall()}
 
                 lista_pop = [
                     (ano, mun, pops.get(mun, 0), pops612.get(mun, 0))
