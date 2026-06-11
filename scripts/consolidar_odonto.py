@@ -73,6 +73,9 @@ def processar_arquivos(pattern=None):
         print("Tabelas não encontradas no MySQL. Execute o script SQL de criação primeiro.")
         return
 
+    cur_mysql.execute("SELECT codigo_ibge FROM municipios_ms")
+    mun_validos = {str(row[0]) for row in cur_mysql.fetchall()}
+
     arquivos = glob.glob(os.path.join(PASTA_PAMS, "*.sqlite")) + \
                glob.glob(os.path.join(PASTA_POP, "*.sqlite"))
 
@@ -122,7 +125,8 @@ def processar_arquivos(pattern=None):
 
                 lista_pop = [
                     (ano, mun, pops.get(mun, 0), pops612.get(mun, 0))
-                    for mun in set(pops.keys()) | set(pops612.keys())
+                    for mun in (set(pops.keys()) | set(pops612.keys()))
+                    if mun in mun_validos
                 ]
                 sql_pop = """
                     INSERT INTO populacao_municipios (ano, municipio, populacao_total, populacao_6_12)
