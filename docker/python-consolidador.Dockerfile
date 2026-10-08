@@ -17,6 +17,6 @@ RUN pip install --no-cache-dir pymysql cryptography
 # Mapearemos o script via volumes no docker-compose para facilitar atualizações
 COPY scripts/consolidar_odonto.py /app/consolidar_odonto.py
 COPY scripts/consolidar_egestor.py /app/consolidar_egestor.py
-COPY scripts/consolidar_egestor.py /app/consolidar_siaps.py
+COPY scripts/consolidar_siaps.py /app/consolidar_siaps.py
 
 CMD ["python", "/app/consolidar_odonto.py"]
